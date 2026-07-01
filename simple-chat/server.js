@@ -1,0 +1,13 @@
+const express=require("express");
+const http=require("http");
+const {Server}=require("socket.io");
+const bcrypt=require("bcrypt");
+const Database=require("better-sqlite3");
+const app=express();const server=http.createServer(app);const io=new Server(server);
+const db=new Database("chat.db");
+db.prepare(`CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,username TEXT UNIQUE,password TEXT)`).run();
+app.use(express.json());app.use(express.static("public"));
+app.post("/register",async(req,res)=>{const{username,password}=req.body;try{db.prepare("INSERT INTO users(username,password) VALUES(?,?)").run(username,await bcrypt.hash(password,10));res.send("Berhasil daftar");}catch{res.send("Username sudah dipakai");}});
+app.post("/login",async(req,res)=>{const{username,password}=req.body;const u=db.prepare("SELECT * FROM users WHERE username=?").get(username);if(!u)return res.send("User tidak ditemukan");res.send(await bcrypt.compare(password,u.password)?"Login berhasil":"Password salah");});
+io.on("connection",s=>s.on("chat",m=>io.emit("chat",m)));
+server.listen(3000,()=>console.log("http://localhost:3000"));
